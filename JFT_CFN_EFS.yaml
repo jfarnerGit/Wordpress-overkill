@@ -1,0 +1,35 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: JF Test EFS Template - requires JFT VPC V2 
+Resources:
+  ElasticFileSystem:
+    Type: AWS::EFS::FileSystem
+    Properties:
+      FileSystemTags:
+        - Key: Name
+          Value: !Join [ '', [ 'JFT-EFS-WordPress / ', !Ref 'AWS::StackName' ] ]
+  ElasticFileSystemMountTarget0:
+    Type: AWS::EFS::MountTarget
+    Properties:
+      FileSystemId: !Ref ElasticFileSystem
+      SecurityGroups:
+        - !ImportValue jft-vpc1-default-instance-sg
+      SubnetId: !ImportValue jft-vpc1-subnet-appa
+  ElasticFileSystemMountTarget1:
+    Type: AWS::EFS::MountTarget
+    Properties:
+      FileSystemId: !Ref ElasticFileSystem
+      SecurityGroups:
+        - !ImportValue jft-vpc1-default-instance-sg
+      SubnetId: !ImportValue jft-vpc1-subnet-appb
+  ElasticFileSystemMountTarget2:
+    Type: AWS::EFS::MountTarget
+    Properties:
+      FileSystemId: !Ref ElasticFileSystem
+      SecurityGroups:
+        - !ImportValue jft-vpc1-default-instance-sg
+      SubnetId: !ImportValue jft-vpc1-subnet-appc
+Outputs:
+  ElasticFileSystem:
+    Value: !Ref ElasticFileSystem
+    Export:
+      Name: jft-vpc1-wordpress-efs

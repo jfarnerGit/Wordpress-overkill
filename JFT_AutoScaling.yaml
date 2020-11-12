@@ -1,0 +1,36 @@
+Parameters:
+  WebAsgMax:
+    AllowedPattern: ^([0-0]?[0-9]|10)$
+    ConstraintDescription: Must be number between 1 and 30.
+    Default: 0
+    Description: Specifies max number of EC2 instances in Web Autoscaling Group.
+    Type: String
+  WebAsgMin:
+    AllowedPattern: ^([0-0]?[0-9]|10)$
+    ConstraintDescription: Must be number between 0 and 10.
+    Default: 0
+    Description: Specifies min number of EC2 instances in Web Autoscaling Group.
+    Type: String
+  WebAsgDesired:
+    AllowedPattern: ^([0-0]?[0-9]|10)$
+    ConstraintDescription: Must be number between 0 and 10.
+    Default: 0
+    Description: Specifies desired number of EC2 instances in the Web Autoscaling Group.
+    Type: String    
+Resources:
+  JFTASG: 
+    Type: AWS::AutoScaling::AutoScalingGroup
+    Properties: 
+      VPCZoneIdentifier:
+        - !ImportValue jft-vpc1-subnet-weba
+        - !ImportValue jft-vpc1-subnet-webb
+      LaunchTemplate:
+        LaunchTemplateId: !ImportValue jft-vpc1-wordpress-launchtemplate  
+        Version: "1"
+      MaxSize: !Ref WebAsgMax
+      MinSize: !Ref WebAsgMin
+      DesiredCapacity: !Ref WebAsgDesired
+      Tags:
+        - Key: "Name"
+          Value: "JFT-WORDPRESS"
+          PropagateAtLaunch: true

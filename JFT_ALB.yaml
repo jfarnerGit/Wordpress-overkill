@@ -1,0 +1,56 @@
+Resources:
+  ALBSG:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      VpcId: !ImportValue jft-vpc1
+      GroupDescription: Inbound HTTP
+      SecurityGroupIngress: 
+        - Description: 'Allow HTTP IPv4 IN'
+          IpProtocol: tcp
+          FromPort: '80'
+          ToPort: '80'
+          CidrIp: '0.0.0.0/0'
+  JFTALB:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties: 
+      IpAddressType: "ipv4"
+      Scheme: "internet-facing"
+      SecurityGroups: 
+        - !Ref ALBSG
+      Subnets: 
+        - !ImportValue jft-vpc1-subnet-weba
+        - !ImportValue jft-vpc1-subnet-webb
+      Tags: 
+        - Key: Name
+          Value: !Join [ '', [ 'JFT-ALB-', !Ref 'AWS::StackName' ] ]
+      Type: "application"
+  JFTALBListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref JFTALBTG
+      LoadBalancerArn: !Ref JFTALB
+      Port: 80
+      Protocol: HTTP
+  JFTALBTG:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      HealthCheckIntervalSeconds: 30
+      HealthCheckPath: /healthcheck.html
+      HealthCheckTimeoutSeconds: 5
+      Port: 80
+      Protocol: HTTP
+      UnhealthyThresholdCount: 5
+      VpcId: !ImportValue jft-vpc1
+Outputs:
+  ALBDNS:
+    Description: DNS Name of the LoadBalancer
+    Value: !GetAtt JFTALB.DNSName
+    Export:
+      Name: jft-vpc1-wordpress-alb-dnsname
+  WordpressURL:
+    Description: Create Final Wordpress URL
+    Value: !Join [ '', [ 'http://', !GetAtt JFTALB.DNSName ] ]
+    Export:
+      Name: jft-vpc1-wordpress-alb-url

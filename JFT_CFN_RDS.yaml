@@ -1,0 +1,66 @@
+Description:  JF Test RDS Single AZ Template. Requires JFT VPC V2
+  Requires SSM Parameters (as below)
+  /JFT/Wordpress/DBName
+  /JFT/Wordpress/DBUser
+  /JFT/Wordpress/DBPassword 
+Parameters:
+  MultiAZ:
+    Description: Multi AZ
+    Type: "String"
+    Default: "False"
+    AllowedValues:
+      - "True"
+      - "False"
+  DatabaseRestoreSnapshot:
+    Description: Determines snapshot to restore from. Leave blank for new.
+    Type: String
+Conditions:
+  NoSnapshot:
+    !Equals ['', !Ref DatabaseRestoreSnapshot]
+Resources:
+  RDSSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      VpcId: !ImportValue jft-vpc1
+      GroupDescription: "Ingress control for RDS instance"
+      SecurityGroupIngress: 
+        - Description: 'Allow SSH IPv4 IN'
+          IpProtocol: tcp
+          FromPort: '3306'
+          ToPort: '3306'
+          SourceSecurityGroupId: !ImportValue jft-vpc1-default-instance-sg
+  RDSSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties: 
+      DBSubnetGroupDescription: JFT RDS subnet group
+      SubnetIds: 
+        - !ImportValue jft-vpc1-subnet-dba
+        - !ImportValue jft-vpc1-subnet-dbb
+        - !ImportValue jft-vpc1-subnet-dbc
+  DB:
+    Type: AWS::RDS::DBInstance
+    DeletionPolicy: Delete
+    Properties:
+      AllocatedStorage: "20"
+      DBInstanceClass: "db.t2.micro"
+      DBSubnetGroupName: !Ref RDSSubnetGroup
+      DBName: !If [NoSnapshot,  '{{resolve:ssm:/JFT/Wordpress/DBName:1}}', !Ref 'AWS::NoValue' ]
+      Engine: MySQL
+      EngineVersion: "5.6.46"
+      MasterUserPassword: !If [NoSnapshot, '{{resolve:ssm-secure:/JFT/Wordpress/DBPassword:1}}', !Ref 'AWS::NoValue' ] 
+      MasterUsername: !If [NoSnapshot, '{{resolve:ssm:/JFT/Wordpress/DBUser:1}}', !Ref 'AWS::NoValue' ]
+      MultiAZ: !Ref MultiAZ
+      StorageType: gp2
+      Tags: 
+        - 
+          Key: Name
+          Value: "JFT-RDS-DB"
+      VPCSecurityGroups:
+        - !Ref RDSSecurityGroup
+      DBSnapshotIdentifier: !If [ NoSnapshot, !Ref 'AWS::NoValue', !Ref DatabaseRestoreSnapshot]
+Outputs:
+  dbhost:
+    Description: "RDS Endpoint Address"
+    Value: !GetAtt DB.Endpoint.Address
+    Export:
+      Name: jft-db-endpoint
